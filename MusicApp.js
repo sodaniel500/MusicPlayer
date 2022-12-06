@@ -1,5 +1,6 @@
-import { StyleSheet, Text, View, SafeAreaView, Dimensions, TouchableOpacity, Image, FlatList } from 'react-native'
+import { StyleSheet, Text, View, SafeAreaView, Dimensions, TouchableOpacity, Image, FlatList, Animated } from 'react-native'
 import React from 'react'
+import { useEffect, useState, useRef } from 'react';
 
 import { AntDesign } from '@expo/vector-icons';
 import { Ionicons } from '@expo/vector-icons';
@@ -10,34 +11,79 @@ import songs from './Model/data';
 const { width, height } = Dimensions.get('window')
 
 const MusicApp = () => {
+    const scrollX = useRef(new Animated.Value(0)).current
+
+    const [songIndex, setSongIndex] = useState(0)
+
+    const songSlider = useRef(null)
+
+    useEffect(() => {
+        scrollX.addListener(({ value }) => {
+            // console.log('ScrollX', scrollX)
+            // console.log('Device Width', width)
+
+            const index = Math.round(value / width)
+            setSongIndex(index)
+            // console.log('indx', index)
+
+            return () => {
+                scrollX.removeAllListeners()
+            }
+        })
+    }, [])
+
+    const skipToNext = () => {
+        songSlider.current.scrollToOffset({
+            offset: (songIndex + 1) * width,
+        })
+    }
+
+    const skipToPrevious = () => {
+        songSlider.current.scrollToOffset({
+            offset: (songIndex - 1) * width,
+        })
+    }
 
     const renderSongs = ({ index, item }) => {
         return (
-            <View style={styles.artwork}>
-            < Image source={item.image}
-                style={styles.img}
-            />
-        </View>
-)
+            <Animated.View style={styles.render}>
+                <View style={styles.artwork}>
+                    < Image source={item.image}
+                        style={styles.img}
+                    />
+                </View>
+            </Animated.View>
+        )
     }
 
     return (
         <SafeAreaView style={{ flex: 1, backgroundColor: '#222831' }}>
             <View style={styles.container}>
 
-                <FlatList 
-                renderItem= {renderSongs}
-                data= {songs}
-                keyExtractor= {(item) => item.id}
-                horizontal
-                pagingEnabled
-                showsHorizontalScrollIndicator={false}
-                scrollEventThrottle={16}
+                <View style={{width:width}}>
+                <Animated.FlatList
+                    ref={songSlider}
+                    renderItem={renderSongs}
+                    data={songs}
+                    keyExtractor={(item) => item.id}
+                    horizontal
+                    pagingEnabled
+                    showsHorizontalScrollIndicator={false}
+                    scrollEventThrottle={16}
+                    onScroll={Animated.event(
+                        [{
+                            nativeEvent: {
+                                contentOffset: { x: scrollX }
+                            }
+                        }],
+                        { useNativeDriver: true }
+                    )}
                 />
+                </View>
 
                 <View>
-                    <Text style={styles.sName}>Lucid Dreams</Text>
-                    <Text style={styles.aName}>Juice WRLD</Text>
+                    <Text style={styles.sName}>{songs[songIndex].title}</Text>
+                    <Text style={styles.aName}>{songs[songIndex].artist}</Text>
                 </View>
 
                 <View>
@@ -59,13 +105,13 @@ const MusicApp = () => {
                 </View>
 
                 <View style={styles.control}>
-                    <TouchableOpacity onPress={() => { }}>
+                    <TouchableOpacity onPress={skipToPrevious}>
                         <Ionicons name="play-skip-back-circle" size={44} color="#FFD369" />
                     </TouchableOpacity>
                     <TouchableOpacity onPress={() => { }}>
                         <MaterialIcons name="pause-circle-filled" size={44} color="#FFD369" />
                     </TouchableOpacity>
-                    <TouchableOpacity onPress={() => { }}>
+                    <TouchableOpacity onPress={skipToNext}>
                         <Ionicons name="play-skip-forward-circle" size={44} color="#FFD369" />
                     </TouchableOpacity>
                 </View>
@@ -103,6 +149,11 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center'
     },
+    render: {
+        width: width,
+        justifyContent: 'center',
+        alignItems: 'center'
+    },
     artwork: {
         width: 300,
         height: 340,
@@ -113,7 +164,6 @@ const styles = StyleSheet.create({
         width: '100%',
         height: '100%',
         borderRadius: 15,
-        resizeMode: 'contain'
     },
     sName: {
         fontSize: 18,
@@ -142,7 +192,8 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         width: '60%',
         justifyContent: 'space-between',
-        marginTop: 15
+        marginTop: 15,
+        bottom: 8
     },
     bottomContainer: {
         borderTopColor: '#393E46',
